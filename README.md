@@ -1,11 +1,11 @@
 
-# 🧠 MindHaven
+#  MindHaven
 
 MindHaven is a full-stack, cross-platform application featuring an Expo/React Native frontend and a Python/FastAPI backend. It integrates secure user authentication, AI-powered conversational endpoints (leveraging Groq AI), and custom guardrails for safe interactions across web and mobile devices.
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+##  Architecture & Tech Stack
 
 - **Frontend**: React Native & Expo (Deployed as a Render Web Service supporting cross-device web/mobile compatibility).
 - **Backend**: Python & FastAPI (Deployed as a separate Render Web Service).
@@ -24,9 +24,9 @@ cd mindhaven
 **Navigate to the backend directory:** cd ai-guardrail
 
 **Create and activate a virtual environment:** python -m venv venv
-# On Windows:
+ On Windows:
 venv\Scripts\activate
-# On macOS/Linux:
+ On macOS/Linux:
 source venv/bin/activate
 
 **Install Dependencies:** pip install -r requirements.txt
