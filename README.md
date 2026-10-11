@@ -3,6 +3,7 @@
 MindHaven is a full-stack, cross-platform application featuring an Expo/React Native frontend and a Python/FastAPI backend. It integrates secure user authentication, AI-powered conversational endpoints (leveraging Groq AI), and custom guardrails for safe interactions across web and mobile devices.
 
 **Live Link (Front-end):** https://mindhaven-app.onrender.com/
+
 **Live Link (Back-end):** https://mindhaven-backend-2vib.onrender.com/
 
 ---
