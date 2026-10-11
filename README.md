@@ -31,7 +31,7 @@ source venv/bin/activate
 
 **Install Dependencies:** pip install -r requirements.txt
 
-**Create a .env file in the ai-guardrail/ folder and add your Groq API key:**GROQ_API_KEY=your_actual_groq_api_key_here
+**Create a .env file in the ai-guardrail/ folder and add your Groq API key:** GROQ_API_KEY=your_actual_groq_api_key_here
 
 **Run the FastAPI development server:** uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
