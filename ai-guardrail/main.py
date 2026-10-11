@@ -1,8 +1,8 @@
-﻿import os
+import os
 import re
 import sqlite3
 import traceback
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -11,7 +11,7 @@ from groq import Groq
 
 load_dotenv(dotenv_path=".env")
 
-app = FastAPI(title="MindHaven Persistent Backend", version="2.5")
+app = FastAPI(title="MindHaven Backend", version="2.5")
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,19 +56,7 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class ProgressSyncRequest(BaseModel):
-    user_id: int
-    water_drops: int
-    sunlight: int
-    stage_index: int
-    streak: int
-
-class PromptRequest(BaseModel):
-    user_id: int = 1
-    prompt: str
-    mood: Optional[str] = "Neutral"
-
-# --- Helpers ---
+# --- Password Validation Helper ---
 def validate_password_strength(password: str) -> tuple[bool, str]:
     if len(password) < 6:
         return False, "Password must be at least 6 characters long."
@@ -80,85 +68,74 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
         return False, "Password must contain at least 1 special character."
     return True, ""
 
-# --- Routes ---
-
+# --- Authentication Endpoints ---
 @app.post("/api/auth/register")
 def register_user(request: RegisterRequest):
     email = request.email.strip().lower()
-    
-    is_valid, error_msg = validate_password_strength(request.password)
+    password = request.password
+
+    # 1. Validate password policy
+    is_valid, error_msg = validate_password_strength(password)
     if not is_valid:
         return {"status": "error", "message": error_msg}
-    
+
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, request.password))
+        
+        # Check if email already exists
+        cursor.execute("SELECT user_id FROM users WHERE email = ?", (email,))
+        existing = cursor.fetchone()
+        if existing:
+            conn.close()
+            return {"status": "error", "message": "Email is already registered. Please log in!"}
+
+        # Insert new user
+        cursor.execute(
+            "INSERT INTO users (email, password) VALUES (?, ?)",
+            (email, password)
+        )
         conn.commit()
         user_id = cursor.lastrowid
         conn.close()
-        
-        return {"status": "success", "message": "Registration successful!", "user_id": user_id}
-    except sqlite3.IntegrityError:
-        return {"status": "error", "message": "Email is already registered. Please log in!"}
+
+        print(f"✅ Successfully registered user: {email}")
+        return {
+            "status": "success",
+            "message": "Registration successful! Welcome to MindHaven. 🌱",
+            "user_id": user_id
+        }
+    except Exception as e:
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/auth/login")
 def login_user(request: LoginRequest):
     email = request.email.strip().lower()
-    
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id, password, water_drops, sunlight, stage_index, streak FROM users WHERE email = ?", (email,))
-    user = cursor.fetchone()
-    conn.close()
+    password = request.password
 
-    if not user or user[1] != request.password:
-        return {"status": "error", "message": "Invalid email or password."}
-    
-    return {
-        "status": "success",
-        "message": "Login successful!",
-        "user_id": user[0],
-        "progress": {
-            "water_drops": user[2],
-            "sunlight": user[3],
-            "stage_index": user[4],
-            "streak": user[5]
-        }
-    }
-
-@app.post("/api/progress/save")
-def save_progress(request: ProgressSyncRequest):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE users 
-        SET water_drops = ?, sunlight = ?, stage_index = ?, streak = ?
-        WHERE user_id = ?
-    """, (request.water_drops, request.sunlight, request.stage_index, request.streak, request.user_id))
-    conn.commit()
-    conn.close()
-    return {"status": "success", "message": "Progress saved successfully!"}
-
-@app.post("/api/chat/secure")
-def secure_chat(request: PromptRequest):
-    if not client:
-        return {"status": "error", "response": " Groq API key missing."}
     try:
-        completion = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            messages=[
-                {"role": "system", "content": "You are MindHaven's supportive AI wellness guide. Keep responses concise and warm (2-4 sentences)."},
-                {"role": "user", "content": request.prompt}
-            ],
-            temperature=0.7,
-            max_tokens=200
-        )
-        return {"status": "success", "response": completion.choices[0].message.content}
-    except Exception as e:
-        return {"status": "error", "response": f" Error: {str(e)}"}
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT user_id, password FROM users WHERE email = ?", (email,))
+        row = cursor.fetchone()
+        conn.close()
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+        if not row:
+            return {"status": "error", "message": "Account not found. Please register first!"}
+
+        user_id, stored_password = row
+
+        if stored_password != password:
+            return {"status": "error", "message": "Incorrect password. Please try again."}
+
+        print(f"🔑 Successfully logged in: {email}")
+        return {
+            "status": "success",
+            "message": "Login successful! 🌿",
+            "user_id": user_id
+        }
+    except Exception as e:
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
