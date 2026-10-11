@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 
-const API_BASE_URL = 'https://mindhaven-backend-2vib.onrender.com/';
+const API_BASE_URL = 'https://mindhaven-backend-2vib.onrender.com';
 
 /**
  * Sends a secure chat message to the FastAPI guardrail/Groq backend.
